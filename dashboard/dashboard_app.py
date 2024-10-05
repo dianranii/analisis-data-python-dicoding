@@ -7,9 +7,9 @@ import streamlit as st
 def load_data():
     base_path = os.getcwd()
 
-    order_items_dataset = os.path.join(base_path, 'order_items_dataset.csv')
-    orders_dataset = os.path.join(base_path, 'orders_dataset.csv')
-    review_product_df_path = os.path.join(base_path, 'review_product_df.csv')
+    order_items_dataset = os.path.join(base_path, 'dashboard', 'order_items_dataset.csv')
+    orders_dataset = os.path.join(base_path, 'dashboard', 'orders_dataset.csv')
+    review_product_df_path = os.path.join(base_path, 'dashboard', 'review_product_df.csv')
 
     try:
         order_items = pd.read_csv(order_items_dataset)
