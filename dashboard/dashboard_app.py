@@ -1,17 +1,26 @@
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import streamlit as st
 
 def load_data():
-    # Load datasets
-    orders_data = pd.read_csv("C:/Users/d101/101/Submission2/dashboard/orders_dataset.csv")
-    order_items = pd.read_csv("C:/Users/d101/101/Submission2/dashboard/order_items_dataset.csv")
-    review_product_df = pd.read_csv("C:/Users/d101/101/Submission2/dashboard/review_product_df.csv")  
+    base_path = os.getcwd()
 
-    # Merge orders and order items using order_id
+    order_items_dataset = os.path.join(base_path, 'order_items_dataset.csv')
+    orders_dataset = os.path.join(base_path, 'orders_dataset.csv')
+    review_product_df_path = os.path.join(base_path, 'review_product_df.csv')
+
+    try:
+        order_items = pd.read_csv(order_items_dataset)
+        orders_data = pd.read_csv(orders_dataset)
+        review_product_df = pd.read_csv(review_product_df_path)
+    except FileNotFoundError as e:
+        st.error(f"File not found: {e}")
+        return None, None  # Return None if loading fails
+
     final_orders_df = pd.merge(orders_data, order_items, on='order_id', how='inner')
-    
+
     return final_orders_df, review_product_df
 
 # Function to get monthly orders data
@@ -115,39 +124,42 @@ def plot_best_customers(rfm_last_month_df):
     ]
     best_customers_top5 = best_customers.sort_values(by=['monetary', 'frequency', 'recency'], ascending=[False, False, True]).head(5)
 
-    # Remove the line below to eliminate the table display
-    # st.write(best_customers_top5)
+    # Create a figure with 3 subplots in a single column
+    plt.figure(figsize=(10, 15))
 
-    # Visualization for best customers
-    plt.figure(figsize=(18, 5))
-    base_color = '#007acc'
+    # Define a base color and a darker shade for higher values
+    base_color = 'skyblue'
+    darker_color = '#005fa3'  # Darker shade of blue
 
-    def get_colors(data, base_color):
-        max_value = data.max()
-        return [base_color if value < max_value else '#005fa3' for value in data]
+    # Function to determine bar colors
+    def get_color(value, max_value):
+        return darker_color if value >= max_value * 0.75 else base_color
 
     # Subplot for Recency
-    plt.subplot(1, 3, 1)
-    recency_colors = get_colors(best_customers_top5['recency'], base_color)
-    plt.bar(best_customers_top5['customer_id'], best_customers_top5['recency'], color=recency_colors)
+    plt.subplot(3, 1, 1)
+    max_recency = best_customers_top5['recency'].max()
+    plt.bar(best_customers_top5['customer_id'], best_customers_top5['recency'],
+            color=[get_color(val, max_recency) for val in best_customers_top5['recency']])
     plt.title('Top 5 Pelanggan - Recency')
     plt.xlabel('Customer ID')
     plt.ylabel('Recency (Hari)')
     plt.xticks(rotation=45)
 
     # Subplot for Frequency
-    plt.subplot(1, 3, 2)
-    frequency_colors = get_colors(best_customers_top5['frequency'], base_color)
-    plt.bar(best_customers_top5['customer_id'], best_customers_top5['frequency'], color=frequency_colors)
+    plt.subplot(3, 1, 2)
+    max_frequency = best_customers_top5['frequency'].max()
+    plt.bar(best_customers_top5['customer_id'], best_customers_top5['frequency'],
+            color=[get_color(val, max_frequency) for val in best_customers_top5['frequency']])
     plt.title('Top 5 Pelanggan - Frequency')
     plt.xlabel('Customer ID')
     plt.ylabel('Frequency (Jumlah Pembelian)')
     plt.xticks(rotation=45)
 
     # Subplot for Monetary
-    plt.subplot(1, 3, 3)
-    monetary_colors = get_colors(best_customers_top5['monetary'], base_color)
-    plt.bar(best_customers_top5['customer_id'], best_customers_top5['monetary'], color=monetary_colors)
+    plt.subplot(3, 1, 3)
+    max_monetary = best_customers_top5['monetary'].max()
+    plt.bar(best_customers_top5['customer_id'], best_customers_top5['monetary'],
+            color=[get_color(val, max_monetary) for val in best_customers_top5['monetary']])
     plt.title('Top 5 Pelanggan - Monetary')
     plt.xlabel('Customer ID')
     plt.ylabel('Monetary (Total Pengeluaran)')
@@ -163,23 +175,25 @@ def main():
     # Load data
     final_orders_df, review_product_df = load_data()
     
-    # Data Aggregation
-    monthly_orders_df = get_monthly_orders(final_orders_df)
-    top_categories = get_category_analysis(review_product_df)
-    rfm_last_month_df = get_rfm_data(final_orders_df)
+    # Check if data was loaded successfully
+    if final_orders_df is not None and review_product_df is not None:
+        # Data Aggregation
+        monthly_orders_df = get_monthly_orders(final_orders_df)
+        top_categories = get_category_analysis(review_product_df)
+        rfm_last_month_df = get_rfm_data(final_orders_df)
 
-    # Visualizations
-    st.subheader("Total Pendapatan per Bulan dalam 6 Bulan Terakhir")
-    plot_monthly_revenue(monthly_orders_df)
+        # Visualizations
+        st.subheader("Total Pendapatan per Bulan dalam 6 Bulan Terakhir")
+        plot_monthly_revenue(monthly_orders_df)
 
-    st.subheader("Distribusi Pola Pembelian Pelanggan")
-    plot_purchase_patterns(rfm_last_month_df)
+        st.subheader("Distribusi Pola Pembelian Pelanggan")
+        plot_purchase_patterns(rfm_last_month_df)
 
-    st.subheader("10 Kategori Produk Teratas Berdasarkan Rata-rata Skor Ulasan")
-    plot_top_categories(top_categories)
+        st.subheader("10 Kategori Produk Teratas Berdasarkan Rata-rata Skor Ulasan")
+        plot_top_categories(top_categories)
 
-    st.subheader("Top 5 Pelanggan dengan Kinerja Terbaik")
-    plot_best_customers(rfm_last_month_df)
+        st.subheader("Top 5 Pelanggan dengan Kinerja Terbaik")
+        plot_best_customers(rfm_last_month_df)
 
 if __name__ == "__main__":
     main()
